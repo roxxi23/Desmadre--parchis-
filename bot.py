@@ -5,6 +5,43 @@ from telegram.ext import ApplicationBuilder, CommandHandler, ContextTypes
 
 games = {}
 
+COLORES = ["🔴", "🔵", "🟢", "🟡"]
+
+
+def crear_tablero(game):
+    tablero = []
+
+    for posicion in range(1, 69):
+        fichas = ""
+
+        for i, user_id in enumerate(game["players"]):
+            if game["positions"][user_id] == posicion:
+                fichas += COLORES[i]
+
+        if fichas:
+            tablero.append(f"{posicion:02d}{fichas}")
+        else:
+            tablero.append(f"{posicion:02d}⬜")
+
+    filas = []
+
+    for i in range(0, 68, 17):
+        fila = tablero[i:i + 17]
+        filas.append(" ".join(fila))
+
+    texto = "🏆🎲 TABLERO DESMADRE PARCHÍS 🎲🏆\n\n"
+    texto += "\n".join(filas)
+    texto += "\n\n🏠 INICIO"
+
+    for i, user_id in enumerate(game["players"]):
+        nombre = game["names"][user_id]
+        posicion = game["positions"][user_id]
+        texto += f"\n{COLORES[i]} {nombre}: casilla {posicion}"
+
+    texto += "\n\n🏁 META: 68"
+
+    return texto
+
 
 async def parchis(update: Update, context: ContextTypes.DEFAULT_TYPE):
     chat_id = update.effective_chat.id
@@ -29,7 +66,8 @@ async def parchis(update: Update, context: ContextTypes.DEFAULT_TYPE):
         "🎲❤️ ¡NUEVA PARTIDA DE DESMADRE PARCHÍS! ❤️🎲\n\n"
         f"👤 {user.full_name} creó la partida.\n\n"
         "👥 Los demás jugadores pueden entrar con /unirme\n"
-        "🏆 Cuando haya al menos 2 jugadores, empieza con /tirar"
+        "🏆 De 2 a 4 jugadores.\n"
+        "🎲 Cuando estén listos, usen /tirar"
     )
 
 
@@ -39,15 +77,16 @@ async def unirme(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     if chat_id not in games:
         await update.message.reply_text(
-            "❌ No hay ninguna partida.\n"
-            "Usá /parchis para crear una."
+            "❌ Primero creá una partida con /parchis."
         )
         return
 
     game = games[chat_id]
 
     if user.id in game["players"]:
-        await update.message.reply_text("😂 Ya estás jugando.")
+        await update.message.reply_text(
+            "😄 Ya estás dentro de la partida."
+        )
         return
 
     if len(game["players"]) >= 4:
@@ -60,14 +99,17 @@ async def unirme(update: Update, context: ContextTypes.DEFAULT_TYPE):
     game["names"][user.id] = user.full_name
     game["positions"][user.id] = 0
 
-    if len(game["players"]) >= 2:
-        game["started"] = True
-
     await update.message.reply_text(
-        f"🎉 {user.full_name} se unió a la partida.\n"
-        f"👥 Jugadores: {len(game['players'])}/4\n\n"
-        "🎲 ¡Ya pueden empezar con /tirar!"
+        f"🎉 {user.full_name} se unió a la partida.\n\n"
+        f"👥 Jugadores: {len(game['players'])}/4\n"
+        "🎲 Ya pueden empezar con /tirar"
     )
+
+    if len(game["players"]) == 4:
+        await update.message.reply_text(
+            "🔥 ¡PARTIDA COMPLETA! 🔥\n"
+            "🎲 ¡Que empiece el desmadre!"
+        )
 
 
 async def salir(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -75,28 +117,39 @@ async def salir(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user = update.effective_user
 
     if chat_id not in games:
-        await update.message.reply_text("❌ No hay una partida activa.")
+        await update.message.reply_text(
+            "❌ No hay una partida activa."
+        )
         return
 
     game = games[chat_id]
 
     if user.id not in game["players"]:
-        await update.message.reply_text("😂 No estás en la partida.")
+        await update.message.reply_text(
+            "❌ No estás dentro de la partida."
+        )
         return
 
+    indice = game["players"].index(user.id)
+
     game["players"].remove(user.id)
-    game["names"].pop(user.id, None)
-    game["positions"].pop(user.id, None)
+    del game["names"][user.id]
+    del game["positions"][user.id]
 
     if len(game["players"]) == 0:
         del games[chat_id]
-        await update.message.reply_text("🎲 La partida terminó.")
+        await update.message.reply_text(
+            "🎲 La partida terminó porque no quedan jugadores."
+        )
         return
 
-    game["turn"] = game["turn"] % len(game["players"])
+    if indice <= game["turn"]:
+        game["turn"] = max(0, game["turn"] - 1)
+
+    game["turn"] %= len(game["players"])
 
     await update.message.reply_text(
-        f"🚪 {user.full_name} salió de la partida."
+        f"👋 {user.full_name} salió de la partida."
     )
 
 
@@ -130,15 +183,31 @@ async def tirar(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return
 
     dado = random.randint(1, 6)
-    game["positions"][user.id] += dado
 
-    posicion = game["positions"][user.id]
+    nueva_posicion = game["positions"][user.id] + dado
+
+    if nueva_posicion > 68:
+        nueva_posicion = 68
+
+    game["positions"][user.id] = nueva_posicion
 
     await update.message.reply_text(
         f"🎲 {user.full_name} tiró el dado...\n\n"
         f"🎲 ¡Salió un {dado}!\n"
-        f"📍 Avanzás a la posición {posicion}."
+        f"📍 Avanzás a la casilla {nueva_posicion}."
     )
+
+    await update.message.reply_text(crear_tablero(game))
+
+    if nueva_posicion >= 68:
+        await update.message.reply_text(
+            f"🏆🎉 ¡TENEMOS GANADOR! 🎉🏆\n\n"
+            f"👑 {user.full_name} llegó a la META.\n"
+            f"🎲 ¡Ganaste Desmadre Parchís!"
+        )
+
+        del games[chat_id]
+        return
 
     game["turn"] = (game["turn"] + 1) % len(game["players"])
 
@@ -162,14 +231,9 @@ async def tablero(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     game = games[chat_id]
 
-    texto = "🏆🎲 TABLERO DESMADRE PARCHÍS 🎲🏆\n\n"
-
-    for user_id in game["players"]:
-        nombre = game["names"][user_id]
-        posicion = game["positions"][user_id]
-        texto += f"👤 {nombre}: 📍 {posicion}\n"
-
-    await update.message.reply_text(texto)
+    await update.message.reply_text(
+        crear_tablero(game)
+    )
 
 
 async def ayuda(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -180,9 +244,10 @@ async def ayuda(update: Update, context: ContextTypes.DEFAULT_TYPE):
         "/salir — Salir de la partida\n"
         "/tirar — Tirar el dado\n"
         "/tablero — Ver el tablero\n"
-        "/ayuda — Cómo jugar\n\n"
+        "/ayuda — Ver los comandos\n\n"
         "👥 De 2 a 4 jugadores\n"
-        "🎲 ¡Que empiece el desmadre!"
+        "🏁 La meta está en la casilla 68\n"
+        "🔥 ¡Que empiece el desmadre!"
     )
 
 
@@ -199,6 +264,7 @@ def main():
     app.add_handler(CommandHandler("ayuda", ayuda))
 
     print("🎲 Desmadre Parchís está funcionando...")
+
     app.run_polling()
 
 
