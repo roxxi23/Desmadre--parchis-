@@ -101,8 +101,7 @@ async def unirme(update: Update, context: ContextTypes.DEFAULT_TYPE):
     game["players"].append(user.id)
     game["names"][user.id] = user.full_name
     game["positions"][user.id] = 0
-
-    if len(game["players"]) >= 2:
+ if len(game["players"]) >= 2:
     game["started"] = True
 
 await update.message.reply_text(
