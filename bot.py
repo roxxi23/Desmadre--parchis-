@@ -105,7 +105,7 @@ async def unirme(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if len(game["players"]) >= 2:
         game["started"] = True
 
-await update.message.reply_text(
+    await update.message.reply_text(
     f"🎉 {user.full_name} se unió a la partida.\n"
     f"👥 Jugadores: {len(game['players'])}/4\n\n"
     "🎲 ¡Ya pueden empezar con /tirar!"
