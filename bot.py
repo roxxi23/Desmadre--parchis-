@@ -3,13 +3,20 @@ import random
 import time
 
 from telegram import Update
-from telegram.ext import ApplicationBuilder, CommandHandler, ContextTypes
+from telegram.ext import (
+    ApplicationBuilder,
+    CommandHandler,
+    ContextTypes,
+)
+
+
+TOKEN = os.getenv("TELEGRAM_TOKEN")
+
+META = 30
+GAME_TIMEOUT = 30 * 60
 
 games = {}
 
-# Tiempo máximo sin actividad: 30 minutos
-GAME_TIMEOUT = 30 * 60
-META = 68
 
 def partida_expirada(chat_id):
     if chat_id not in games:
@@ -17,7 +24,7 @@ def partida_expirada(chat_id):
 
     ultima_actividad = games[chat_id].get("last_activity", time.time())
 
-    if time.time() - ultima_actividad >= GAME_TIMEOUT:
+    if time.time() - ultima_actividad > GAME_TIMEOUT:
         del games[chat_id]
         return True
 
@@ -29,40 +36,58 @@ def actualizar_actividad(chat_id):
         games[chat_id]["last_activity"] = time.time()
 
 
+async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    await update.message.reply_text(
+        "🎲 ¡Hola! Soy el bot de Parchís.\n\n"
+        "Usá /ayuda para ver los comandos."
+    )
+
+
+async def ayuda(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    await update.message.reply_text(
+        "🎲 COMANDOS DEL PARCHÍS 🎲\n\n"
+        "/parchis - Crear una partida\n"
+        "/unirme - Unirse a la partida\n"
+        "/salir - Salir de la partida\n"
+        "/tirar - Tirar el dado\n"
+        "/tablero - Ver el tablero\n"
+        "/reiniciar - Cancelar la partida\n"
+        "/cancelar - Cancelar la partida\n"
+        "/ayuda - Ver esta ayuda"
+    )
+
+
 async def parchis(update: Update, context: ContextTypes.DEFAULT_TYPE):
     chat_id = update.effective_chat.id
     user = update.effective_user
 
-    if partida_expirada(chat_id):
-        await update.message.reply_text(
-            "🧹 La partida anterior estaba abandonada y fue cerrada.\n\n"
-            "🎲 ¡Ya pueden comenzar una nueva partida!"
-        )
+    partida_expirada(chat_id)
 
     if chat_id in games:
-        actualizar_actividad(chat_id)
-
         await update.message.reply_text(
-            "🎲 Ya hay una partida creada.\n"
-            "Usá /unirme para entrar.\n\n"
-            "🧹 Si la partida quedó abandonada, usá /reiniciar."
+            "🎲 Ya hay una partida activa.\n\n"
+            "Usá /unirme para entrar."
         )
         return
 
     games[chat_id] = {
         "players": [user.id],
-        "names": {user.id: user.full_name},
+        "names": {
+            user.id: user.full_name
+        },
+        "positions": {
+            user.id: 0
+        },
         "turn": 0,
-        "positions": {user.id: 0},
         "started": False,
-        "last_activity": time.time()
+        "created_at": time.time(),
+        "last_activity": time.time(),
     }
 
     await update.message.reply_text(
-        "🎲❤️ ¡NUEVA PARTIDA DE DESMADRE PARCHÍS! ❤️🎲\n\n"
-        f"👤 {user.full_name} creó la partida.\n\n"
-        "👥 Los demás jugadores pueden entrar con /unirme\n"
-        "🏆 Cuando haya al menos 2 jugadores, empieza con /tirar"
+        f"🎲 ¡{user.full_name} creó una partida de Parchís!\n\n"
+        "👥 Jugadores: 1/4\n"
+        "👉 Usá /unirme para entrar."
     )
 
 
@@ -80,16 +105,17 @@ async def unirme(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     if chat_id not in games:
         await update.message.reply_text(
-            "❌ No hay ninguna partida.\n"
-            "Usá /parchis para crear una."
+            "❌ No hay ninguna partida.\n\n"
+            "🎲 Usá /parchis para crear una."
         )
         return
 
     game = games[chat_id]
-    actualizar_actividad(chat_id)
 
     if user.id in game["players"]:
-        await update.message.reply_text("😂 Ya estás jugando.")
+        await update.message.reply_text(
+            "😅 Ya estás dentro de la partida."
+        )
         return
 
     if len(game["players"]) >= 4:
@@ -105,11 +131,13 @@ async def unirme(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if len(game["players"]) >= 2:
         game["started"] = True
 
+    actualizar_actividad(chat_id)
+
     await update.message.reply_text(
-    f"🎉 {user.full_name} se unió a la partida.\n"
-    f"👥 Jugadores: {len(game['players'])}/4\n\n"
-    "🎲 ¡Ya pueden empezar con /tirar!"
-)
+        f"🎉 {user.full_name} se unió a la partida.\n"
+        f"👥 Jugadores: {len(game['players'])}/4\n\n"
+        "🎲 ¡Ya pueden empezar con /tirar!"
+    )
 
 
 async def salir(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -118,13 +146,13 @@ async def salir(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     if partida_expirada(chat_id):
         await update.message.reply_text(
-            "⏰ La partida ya estaba abandonada y fue cerrada."
+            "⏰ La partida estaba inactiva y fue cerrada."
         )
         return
 
     if chat_id not in games:
         await update.message.reply_text(
-            "❌ No hay una partida activa."
+            "❌ No hay ninguna partida activa."
         )
         return
 
@@ -132,7 +160,7 @@ async def salir(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     if user.id not in game["players"]:
         await update.message.reply_text(
-            "😂 No estás en la partida."
+            "❌ No estás dentro de la partida."
         )
         return
 
@@ -144,17 +172,19 @@ async def salir(update: Update, context: ContextTypes.DEFAULT_TYPE):
         del games[chat_id]
 
         await update.message.reply_text(
-            "🎲 La partida terminó y quedó liberada.\n"
+            "🎲 La partida terminó y quedó liberada.\n\n"
             "Ya pueden crear otra con /parchis."
         )
         return
 
+    if game["turn"] >= len(game["players"]):
+        game["turn"] = 0
+
     actualizar_actividad(chat_id)
 
-    game["turn"] = game["turn"] % len(game["players"])
-
     await update.message.reply_text(
-        f"🚪 {user.full_name} salió de la partida."
+        f"🚪 {user.full_name} salió de la partida.\n"
+        f"👥 Quedan {len(game['players'])} jugadores."
     )
 
 
@@ -216,36 +246,46 @@ async def tirar(update: Update, context: ContextTypes.DEFAULT_TYPE):
         )
         return
 
-
     dado = random.randint(1, 6)
 
     posicion_actual = game["positions"][user.id]
     nueva_posicion = posicion_actual + dado
 
     if nueva_posicion >= META:
-      game["positions"][user.id] = META
-  
-        await update.message.reply_text(
-        f"🎲 {user.full_name} tiró el dado...\n\n"
-        f"🎲 ¡Salió un {dado}!\n"
-        f"🏁 ¡{user.full_name} llegó a la META!\n\n"
-        "🏆🎉 ¡TENEMOS GANADOR!"
-    )
+        game["positions"][user.id] = META
 
-    del games[chat_id]
-      return
+        await update.message.reply_text(
+            f"🎲 {user.full_name} tiró el dado...\n\n"
+            f"🎲 ¡Salió un {dado}!\n"
+            f"🏁 ¡{user.full_name} llegó a la META!\n"
+            "🏆🎉 ¡TENEMOS GANADOR!"
+        )
+
+        del games[chat_id]
+        return
 
     game["positions"][user.id] = nueva_posicion
     posicion = nueva_posicion
 
-actualizar_actividad(chat_id)
+    actualizar_actividad(chat_id)
 
-await update.message.reply_text(
-    f"🎲 {user.full_name} tiró el dado...\n\n"
-    f"🎲 ¡Salió un {dado}!\n"
-    f"📍 Avanzás a la posición {posicion}."
-)
-game["turn"] = (game["turn"] + 1) % len(game["players"])
+    await update.message.reply_text(
+        f"🎲 {user.full_name} tiró el dado...\n\n"
+        f"🎲 ¡Salió un {dado}!\n"
+        f"📍 Avanzás a la posición {posicion}."
+    )
+
+    game["turn"] = (
+        game["turn"] + 1
+    ) % len(game["players"])
+
+    siguiente = game["players"][game["turn"]]
+    nombre_siguiente = game["names"][siguiente]
+
+    await update.message.reply_text(
+        f"👉 Ahora le toca a {nombre_siguiente}.\n"
+        "🎲 Usá /tirar"
+    )
 
 
 async def tablero(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -261,54 +301,50 @@ async def tablero(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     if chat_id not in games:
         await update.message.reply_text(
-            "❌ No hay una partida activa."
+            "❌ No hay ninguna partida activa."
         )
         return
 
     game = games[chat_id]
+
+    texto = "🎲 TABLERO 🎲\n\n"
+
+    for jugador_id in game["players"]:
+        nombre = game["names"][jugador_id]
+        posicion = game["positions"][jugador_id]
+
+        texto += f"👤 {nombre}\n"
+        texto += f"📍 Posición: {posicion}/{META}\n\n"
+
+    siguiente = game["players"][game["turn"]]
+    nombre_siguiente = game["names"][siguiente]
+
+    texto += f"👉 Turno: {nombre_siguiente}"
+
     actualizar_actividad(chat_id)
-
-    texto = "🏆🎲 TABLERO DESMADRE PARCHÍS 🎲🏆\n\n"
-
-    for user_id in game["players"]:
-        nombre = game["names"][user_id]
-        posicion = game["positions"][user_id]
-
-        texto += f"👤 {nombre}: 📍 {posicion}\n"
 
     await update.message.reply_text(texto)
 
 
-async def ayuda(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await update.message.reply_text(
-        "🎲❤️ DESMADRE PARCHÍS ❤️🎲\n\n"
-        "/parchis — Crear una partida\n"
-        "/unirme — Unirme a la partida\n"
-        "/salir — Salir de la partida\n"
-        "/reiniciar — Cancelar una partida trabada\n"
-        "/tirar — Tirar el dado\n"
-        "/tablero — Ver el tablero\n"
-        "/ayuda — Cómo jugar\n\n"
-        "👥 De 2 a 4 jugadores\n"
-        "⏰ Las partidas sin actividad se liberan después de 30 minutos.\n"
-        "🎲 ¡Que empiece el desmadre!"
-    )
-
-
 def main():
-    token = os.environ["TELEGRAM_TOKEN"]
+    if not TOKEN:
+        raise ValueError(
+            "No se encontró la variable TELEGRAM_TOKEN."
+        )
 
-    app = ApplicationBuilder().token(token).build()
+    app = ApplicationBuilder().token(TOKEN).build()
 
+    app.add_handler(CommandHandler("start", start))
+    app.add_handler(CommandHandler("ayuda", ayuda))
     app.add_handler(CommandHandler("parchis", parchis))
     app.add_handler(CommandHandler("unirme", unirme))
     app.add_handler(CommandHandler("salir", salir))
-    app.add_handler(CommandHandler("reiniciar", reiniciar))
     app.add_handler(CommandHandler("tirar", tirar))
     app.add_handler(CommandHandler("tablero", tablero))
-    app.add_handler(CommandHandler("ayuda", ayuda))
+    app.add_handler(CommandHandler("reiniciar", reiniciar))
+    app.add_handler(CommandHandler("cancelar", reiniciar))
 
-    print("🎲 Desmadre Parchís está funcionando...")
+    print("🎲 Bot de Parchís iniciado correctamente.")
 
     app.run_polling()
 
