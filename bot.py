@@ -252,7 +252,14 @@ async def tirar(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     if nueva_posicion >= META:
         game["positions"][user.id] = META
+        scores[user.id] = scores.get(
+       user.id,
+      {"name": user.full_name, "points": 0, "wins": 0}
+)
 
+        scores[user.id]["name"] = user.full_name
+        scores[user.id]["points"] += 5
+        scores[user.id]["wins"] += 1
         await update.message.reply_text(
             f"🏁 {user.full_name} llegó a la META.\n\n"
             "🏆🎉 ¡TENEMOS GANADOR!"
