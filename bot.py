@@ -224,8 +224,8 @@ async def tirar(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     if nueva_posicion >= META:
       game["positions"][user.id] = META
-
-       await update.message.reply_text(
+  
+        await update.message.reply_text(
         f"🎲 {user.full_name} tiró el dado...\n\n"
         f"🎲 ¡Salió un {dado}!\n"
         f"🏁 ¡{user.full_name} llegó a la META!\n\n"
