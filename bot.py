@@ -16,7 +16,7 @@ META = 60
 GAME_TIMEOUT = 30 * 60
 
 games = {}
-
+scores = {}
 
 def partida_expirada(chat_id):
     if chat_id not in games:
