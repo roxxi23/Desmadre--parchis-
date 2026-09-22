@@ -12,7 +12,7 @@ from telegram.ext import (
 
 TOKEN = os.getenv("TELEGRAM_TOKEN")
 
-META = 30
+META = 60
 GAME_TIMEOUT = 30 * 60
 
 games = {}
