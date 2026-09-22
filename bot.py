@@ -305,16 +305,18 @@ async def tablero(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     texto = "🎲🏁 TABLERO DESMADRE PARCHÍS 🏁🎲\n\n"
 
-    # TABLERO DE 60 CASILLAS
+        # 🎲 TABLERO VISUAL DE 60 CASILLAS
+    fichas = ["🔴", "🔵", "🟢", "🟡"]
+
     for inicio in range(1, 61, 10):
         fila = ""
 
         for casilla in range(inicio, inicio + 10):
             jugadores_en_casilla = []
 
-            for jugador_id in game["players"]:
+            for indice, jugador_id in enumerate(game["players"]):
                 if game["positions"][jugador_id] == casilla:
-                    jugadores_en_casilla.append("🟢")
+                    jugadores_en_casilla.append(fichas[indice])
 
             if jugadores_en_casilla:
                 fila += f"[{casilla:02d}{''.join(jugadores_en_casilla)}] "
