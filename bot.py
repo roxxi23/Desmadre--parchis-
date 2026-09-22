@@ -217,15 +217,15 @@ async def tirar(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return
 
 
-dado = random.randint(1, 6)
+    dado = random.randint(1, 6)
 
-posicion_actual = game["positions"][user.id]
-nueva_posicion = posicion_actual + dado
+    posicion_actual = game["positions"][user.id]
+    nueva_posicion = posicion_actual + dado
 
-if nueva_posicion >= META:
-    game["positions"][user.id] = META
+    if nueva_posicion >= META:
+      game["positions"][user.id] = META
 
-    await update.message.reply_text(
+       await update.message.reply_text(
         f"🎲 {user.full_name} tiró el dado...\n\n"
         f"🎲 ¡Salió un {dado}!\n"
         f"🏁 ¡{user.full_name} llegó a la META!\n\n"
@@ -233,10 +233,10 @@ if nueva_posicion >= META:
     )
 
     del games[chat_id]
-    return
+      return
 
-game["positions"][user.id] = nueva_posicion
-posicion = nueva_posicion
+    game["positions"][user.id] = nueva_posicion
+    posicion = nueva_posicion
 
 actualizar_actividad(chat_id)
 
