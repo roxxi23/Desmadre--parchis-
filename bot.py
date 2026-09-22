@@ -285,14 +285,12 @@ async def tirar(update: Update, context: ContextTypes.DEFAULT_TYPE):
         "🎲 Usá /tirar"
     )
 
-
 async def tablero(update: Update, context: ContextTypes.DEFAULT_TYPE):
     chat_id = update.effective_chat.id
 
     if partida_expirada(chat_id):
         await update.message.reply_text(
-            "⏰ La partida estuvo demasiado tiempo sin actividad "
-            "y fue cerrada.\n\n"
+            "⏰ La partida estuvo demasiado tiempo sin actividad y fue cerrada.\n\n"
             "🎲 Usá /parchis para crear una nueva."
         )
         return
@@ -305,23 +303,44 @@ async def tablero(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     game = games[chat_id]
 
-    texto = "🎲 TABLERO 🎲\n\n"
+    texto = "🎲🏁 TABLERO DESMADRE PARCHÍS 🏁🎲\n\n"
+
+    # TABLERO DE 60 CASILLAS
+    for inicio in range(1, 61, 10):
+        fila = ""
+
+        for casilla in range(inicio, inicio + 10):
+            jugadores_en_casilla = []
+
+            for jugador_id in game["players"]:
+                if game["positions"][jugador_id] == casilla:
+                    jugadores_en_casilla.append("🟢")
+
+            if jugadores_en_casilla:
+                fila += f"[{casilla:02d}{''.join(jugadores_en_casilla)}] "
+            else:
+                fila += f"[{casilla:02d}] "
+
+        texto += fila + "\n"
+
+    texto += "\n🏁 META: 60\n\n"
+    texto += "👥 POSICIONES:\n"
 
     for jugador_id in game["players"]:
         nombre = game["names"][jugador_id]
         posicion = game["positions"][jugador_id]
 
-        texto += f"👤 {nombre}\n"
-        texto += f"📍 Posición: {posicion}/{META}\n\n"
+        texto += f"👤 {nombre}: 📍 {posicion}/60\n"
 
     siguiente = game["players"][game["turn"]]
     nombre_siguiente = game["names"][siguiente]
 
-    texto += f"👉 Turno: {nombre_siguiente}"
+    texto += f"\n👉 Turno: {nombre_siguiente}"
 
     actualizar_actividad(chat_id)
 
     await update.message.reply_text(texto)
+
 async def ranking(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not scores:
         await update.message.reply_text(
