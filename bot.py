@@ -245,9 +245,7 @@ await update.message.reply_text(
     f"🎲 ¡Salió un {dado}!\n"
     f"📍 Avanzás a la posición {posicion}."
 )
-    game["turn"] = (game["turn"] + 1) % len(game["players"])
-    siguiente = game["players"][game["turn"]]
-    nombre_siguiente = game["names"][siguiente]
+       game["turn"] = (game["turn"] + 1) % len(game["players"]) 
 
     await update.message.reply_text(
         f"👉 Ahora le toca a {nombre_siguiente}.\n"
