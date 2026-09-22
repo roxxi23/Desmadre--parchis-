@@ -322,7 +322,30 @@ async def tablero(update: Update, context: ContextTypes.DEFAULT_TYPE):
     actualizar_actividad(chat_id)
 
     await update.message.reply_text(texto)
+async def ranking(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    if not scores:
+        await update.message.reply_text(
+            "🏆 Todavía no hay puntos.\n"
+            "🎲 ¡Jugá una partida para empezar el ranking!"
+        )
+        return
 
+    ordenados = sorted(
+        scores.items(),
+        key=lambda x: x[1]["points"],
+        reverse=True
+    )
+
+    texto = "🏆 RANKING DESMADRE PARCHÍS\n\n"
+
+    for i, (user_id, datos) in enumerate(ordenados, start=1):
+        texto += (
+            f"{i}. {datos['name']} — "
+            f"⭐ {datos['points']} puntos "
+            f"🏆 {datos['wins']} victorias\n"
+        )
+
+    await update.message.reply_text(texto)
 
 def main():
     if not TOKEN:
@@ -341,7 +364,7 @@ def main():
     app.add_handler(CommandHandler("tablero", tablero))
     app.add_handler(CommandHandler("reiniciar", reiniciar))
     app.add_handler(CommandHandler("cancelar", reiniciar))
-
+    app.add_handler(CommandHandler("ranking", ranking))
     print("🎲 Bot de Parchís iniciado correctamente.")
 
     app.run_polling()
