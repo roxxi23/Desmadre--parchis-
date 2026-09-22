@@ -236,15 +236,15 @@ if nueva_posicion >= META:
     return
 
 game["positions"][user.id] = nueva_posicion
-posicion = nueva_posicion 
+posicion = nueva_posicion
+
 actualizar_actividad(chat_id)
 
- await update.message.reply_text(
-        f"🎲 {user.full_name} tiró el dado...\n\n"
-        f"🎲 ¡Salió un {dado}!\n"
-        f"📍 Avanzás a la posición {posicion}."
-    )
-
+await update.message.reply_text(
+    f"🎲 {user.full_name} tiró el dado...\n\n"
+    f"🎲 ¡Salió un {dado}!\n"
+    f"📍 Avanzás a la posición {posicion}."
+)
     game["turn"] = (
         game["turn"] + 1
     ) % len(game["players"])
