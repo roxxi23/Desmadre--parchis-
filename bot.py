@@ -212,8 +212,7 @@ async def tirar(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     if partida_expirada(chat_id):
         await update.message.reply_text(
-            "⏰ La partida estuvo demasiado tiempo sin actividad "
-            "y fue cerrada.\n\n"
+            "⏰ La partida estuvo demasiado tiempo sin actividad y fue cerrada.\n\n"
             "🎲 Usá /parchis para crear una nueva."
         )
         return
@@ -228,7 +227,6 @@ async def tirar(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     if len(game["players"]) < 2:
         actualizar_actividad(chat_id)
-
         await update.message.reply_text(
             "👥 Necesitamos al menos 2 jugadores.\n"
             "Usá /unirme para entrar."
@@ -239,14 +237,15 @@ async def tirar(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     if user.id != current_player:
         nombre = game["names"][current_player]
-
         await update.message.reply_text(
             "⏳ Todavía no te toca.\n"
             f"🎲 Es el turno de {nombre}."
         )
         return
 
-    dado = random.randint(1, 6)
+    # 🎲 DADO REAL DE TELEGRAM
+    resultado = await update.message.reply_dice(emoji="🎲")
+    dado = resultado.dice.value
 
     posicion_actual = game["positions"][user.id]
     nueva_posicion = posicion_actual + dado
@@ -255,9 +254,7 @@ async def tirar(update: Update, context: ContextTypes.DEFAULT_TYPE):
         game["positions"][user.id] = META
 
         await update.message.reply_text(
-            f"🎲 {user.full_name} tiró el dado...\n\n"
-            f"🎲 ¡Salió un {dado}!\n"
-            f"🏁 ¡{user.full_name} llegó a la META!\n"
+            f"🏁 {user.full_name} llegó a la META.\n\n"
             "🏆🎉 ¡TENEMOS GANADOR!"
         )
 
@@ -265,20 +262,14 @@ async def tirar(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return
 
     game["positions"][user.id] = nueva_posicion
-    posicion = nueva_posicion
-
     actualizar_actividad(chat_id)
 
     await update.message.reply_text(
-        f"🎲 {user.full_name} tiró el dado...\n\n"
-        f"🎲 ¡Salió un {dado}!\n"
-        f"📍 Avanzás a la posición {posicion}."
+        f"🎲 {user.full_name} sacó un {dado}.\n"
+        f"📍 Avanzás a la posición {nueva_posicion}."
     )
 
-    game["turn"] = (
-        game["turn"] + 1
-    ) % len(game["players"])
-
+    game["turn"] = (game["turn"] + 1) % len(game["players"])
     siguiente = game["players"][game["turn"]]
     nombre_siguiente = game["names"][siguiente]
 
