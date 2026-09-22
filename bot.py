@@ -245,8 +245,7 @@ await update.message.reply_text(
     f"🎲 ¡Salió un {dado}!\n"
     f"📍 Avanzás a la posición {posicion}."
 )
-        game["turn"] = (game["turn"] + 1) % len(game["players"])
-    )
+game["turn"] = (game["turn"] + 1) % len(game["players"])
 
 
 async def tablero(update: Update, context: ContextTypes.DEFAULT_TYPE):
